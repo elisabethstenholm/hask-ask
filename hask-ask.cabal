@@ -68,7 +68,9 @@ executable hask-ask
 
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.19.2.0,
-                      stm >= 2.5.3.1
+                      stm >= 2.5.3.1,
+                      time >= 1.15,
+                      Decimal >= 0.5.2
 
     -- Directories containing source files.
     hs-source-dirs:   app
