@@ -14,7 +14,6 @@ import Lucid
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.HTML.Lucid
-import Web.FormUrlEncoded
 
 data BidReq = BidReq
   { name :: Text,
@@ -23,8 +22,6 @@ data BidReq = BidReq
   deriving (Generic)
 
 instance ToJSON BidReq
-
-instance FromForm BidReq
 
 bids :: [Bid]
 bids =
@@ -35,7 +32,7 @@ bids =
 type API =
   Get '[HTML] (Html ())
     :<|> "allBids" :> Get '[JSON] [Bid]
-    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] BidReq :> Post '[HTML] (Html ())
+    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] Bid :> Post '[HTML] (Html ())
 
 getHome :: Handler (Html ())
 getHome =
@@ -45,15 +42,15 @@ getHome =
       body_ $ do
         form_ [method_ "post", action_ "/placeBid"] $ do
           label_ [for_ "name"] "Name"
-          input_ [type_ "text", id_ "name", name_ "name"]
+          input_ [type_ "text", id_ "name", name_ "name", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
           label_ [for_ "amount"] "Amount"
-          input_ [type_ "text", id_ "amount", name_ "amount"]
+          input_ [type_ "number", id_ "amount", name_ "amount", min_ "0", step_ "1"]
           input_ [type_ "submit", value_ "Place bid"]
 
 getBids :: Handler [Bid]
 getBids = return bids
 
-postBid :: BidReq -> Handler (Html ())
+postBid :: Bid -> Handler (Html ())
 postBid _ =
   return $
     doctypehtml_ $ do

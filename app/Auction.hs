@@ -12,14 +12,17 @@ import qualified Data.Text as Text
 import Data.Time.Clock
 import GHC.Generics
 import Utilities
+import Web.FormUrlEncoded
 
 data Bid = Bid
   { name :: Text,
-    amount :: Int
+    amount :: Integer
   }
   deriving (Generic)
 
 instance ToJSON Bid
+
+instance FromForm Bid
 
 data ItemState = Open | Closed
 
