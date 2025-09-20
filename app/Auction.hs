@@ -1,16 +1,25 @@
-module Auction where
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+module Auction (Bid (..)) where
 
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Aeson
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Time.Clock
+import GHC.Generics
 import Utilities
 
-type Name = String
+data Bid = Bid
+  { name :: Text,
+    amount :: Int
+  }
+  deriving (Generic)
 
-type Amount = Int
-
-type Bid = (Name, Amount)
+instance ToJSON Bid
 
 data ItemState = Open | Closed
 
@@ -28,9 +37,9 @@ updateCurrentBid item queueVar = do
   case itemState of
     Closed -> return ()
     Open -> do
-      (name, amount) <- readTVar $ highestBid item
-      (bidName, bidAmount) <- readTChan queueVar
-      let newHighestBid = if amount >= bidAmount then (name, amount) else (bidName, bidAmount)
+      topBid <- readTVar $ highestBid item
+      bid <- readTChan queueVar
+      let newHighestBid = if amount topBid >= amount bid then topBid else bid
       writeTVar (highestBid item) newHighestBid
 
 updateItem :: Item -> BidQueue -> IO Bid
@@ -48,11 +57,11 @@ getBids item queueVar = do
   case itemState of
     Closed -> return ()
     Open -> do
-      (name, amount) <- readTVarIO (highestBid item)
-      putStrLn $ "Current bid: " ++ show amount ++ " by " ++ name
+      topBid <- readTVarIO (highestBid item)
+      putStrLn $ "Current bid: " ++ show (amount topBid) ++ " by " ++ Text.unpack (name topBid)
       bidName <- getLine
       bidAmount <- getLine
-      writeTChanIO queueVar (bidName, read bidAmount)
+      writeTChanIO queueVar $ Bid (Text.pack bidName) (read bidAmount)
       threadDelay 10000
       getBids item queueVar
 
@@ -72,7 +81,7 @@ tui = do
 
   currentTime <- getCurrentTime
   let itemEndTime = addUTCTime (secondsToNominalDiffTime 10) currentTime
-  currentBidVar <- newTVarIO ("", 0)
+  currentBidVar <- newTVarIO $ Bid "" 0
   currentState <- newTVarIO Open
   queueVar <- newTChanIO
 
@@ -80,6 +89,6 @@ tui = do
 
   void $ forkIO $ forever $ timer item
   void $ forkIO $ do
-    (winner, _) <- updateItem item queueVar
-    putStrLn $ "Winning bid: " ++ winner
+    winningBid <- updateItem item queueVar
+    putStrLn $ "Winning bid: " ++ Text.unpack (name winningBid)
   getBids item queueVar

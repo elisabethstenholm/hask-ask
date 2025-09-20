@@ -6,6 +6,7 @@
 
 module Server (runApp) where
 
+import Auction
 import Data.Aeson
 import Data.Text (Text)
 import GHC.Generics
@@ -13,32 +14,17 @@ import Lucid
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.HTML.Lucid
+import Web.FormUrlEncoded
 
-data Bid = Bid
+data BidReq = BidReq
   { name :: Text,
-    amount :: Int
+    amount :: Text
   }
   deriving (Generic)
 
-instance ToJSON Bid
+instance ToJSON BidReq
 
-instance FromJSON Bid
-
--- instance ToHtml Bid where
---   toHtml bid =
---     tr_ $
---       td_ (toHtml $ name bid) <> td_ (toHtml $ show $ amount bid)
-
---   toHtmlRaw = toHtml
-
--- instance ToHtml [Bid] where
---   toHtml bids = table_ $ do
---     tr_ $ do
---       th_ "Name"
---       th_ "Amount"
---     foldMap toHtml bids
-
---   toHtmlRaw = toHtml
+instance FromForm BidReq
 
 bids :: [Bid]
 bids =
@@ -49,7 +35,7 @@ bids =
 type API =
   Get '[HTML] (Html ())
     :<|> "allBids" :> Get '[JSON] [Bid]
-    :<|> "placeBid" :> ReqBody '[JSON] Bid :> Post '[HTML] (Html ())
+    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] BidReq :> Post '[HTML] (Html ())
 
 getHome :: Handler (Html ())
 getHome =
@@ -67,7 +53,7 @@ getHome =
 getBids :: Handler [Bid]
 getBids = return bids
 
-postBid :: Bid -> Handler (Html ())
+postBid :: BidReq -> Handler (Html ())
 postBid _ =
   return $
     doctypehtml_ $ do
