@@ -64,6 +64,7 @@ executable hask-ask
     other-modules:    Utilities
                       Server
                       Auction
+                      View
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -85,3 +86,10 @@ executable hask-ask
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+    -- Default language extensions
+    default-extensions: DataKinds
+                        DeriveGeneric
+                        FlexibleInstances
+                        OverloadedStrings
+                        TypeOperators
