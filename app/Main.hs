@@ -1,6 +1,6 @@
 module Main where
 
-import Api
+import Server
 
 main :: IO ()
 main = runApp

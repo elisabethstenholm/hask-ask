@@ -62,7 +62,7 @@ executable hask-ask
 
     -- Modules included in this executable, other than Main.
     other-modules:    Utilities
-                      Api
+                      Server
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

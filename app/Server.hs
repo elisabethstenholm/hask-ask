@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Api (runApp) where
+module Server (runApp) where
 
 import Data.Aeson
 import Data.Text (Text)
