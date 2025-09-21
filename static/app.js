@@ -5,16 +5,17 @@ form.addEventListener("submit", async ev => {
     ev.preventDefault();
     msgEl.textContent = "";
 
-    const body = new URLSearchParams(new FormData(form));
+    const obj = Object.fromEntries(new FormData(form).entries());
+    obj.amount = Number.parseInt(obj.amount);
 
     try {
         const result = await fetch("/placeBid", {
             method: "POST",
             headers: {
                 "Accept": "*/*",
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/json"
             },
-            body: body.toString()
+            body: JSON.stringify(obj)
         });
 
         if (result.status === 204) {

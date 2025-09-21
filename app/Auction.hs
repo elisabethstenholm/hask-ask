@@ -19,6 +19,8 @@ data Bid = Bid
 
 instance ToJSON Bid
 
+instance FromJSON Bid
+
 instance FromForm Bid
 
 data ItemState = Open | Closed

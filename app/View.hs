@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module View where
+module View (withHead, bidForm) where
 
 import Auction
 import Data.Text (Text)
@@ -20,7 +20,7 @@ bidForm =
     label_ [for_ "name"] "Name"
     input_ [type_ "text", id_ "name", name_ "name", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
     label_ [for_ "amount"] "Amount"
-    input_ [type_ "number", id_ "amount", name_ "amount", min_ "0", step_ "1"]
+    input_ [type_ "number", id_ "amount", name_ "amount", min_ "1", step_ "1"]
     div_ [id_ "msg"] mempty
     input_ [type_ "submit", value_ "Place bid"]
 

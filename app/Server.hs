@@ -1,15 +1,11 @@
 module Server (runApp) where
 
 import Auction
-import Data.Aeson
-import Data.Text (Text)
-import GHC.Generics
 import Lucid
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.HTML.Lucid
 import View
-
 
 bids :: [Bid]
 bids =
@@ -20,7 +16,7 @@ bids =
 type API =
   Get '[HTML] (Html ())
     :<|> "allBids" :> Get '[JSON] [Bid]
-    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] Bid :> PostNoContent
+    :<|> "placeBid" :> ReqBody '[JSON] Bid :> PostNoContent
     :<|> "static" :> Raw
 
 getHome :: Handler (Html ())
