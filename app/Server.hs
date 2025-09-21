@@ -10,13 +10,6 @@ import Servant
 import Servant.HTML.Lucid
 import View
 
-data BidReq = BidReq
-  { name :: Text,
-    amount :: Text
-  }
-  deriving (Generic)
-
-instance ToJSON BidReq
 
 bids :: [Bid]
 bids =
@@ -27,7 +20,8 @@ bids =
 type API =
   Get '[HTML] (Html ())
     :<|> "allBids" :> Get '[JSON] [Bid]
-    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] Bid :> Post '[HTML] (Html ())
+    :<|> "placeBid" :> ReqBody '[FormUrlEncoded] Bid :> PostNoContent
+    :<|> "static" :> Raw
 
 getHome :: Handler (Html ())
 getHome = return $ withHead bidForm
@@ -35,15 +29,14 @@ getHome = return $ withHead bidForm
 getBids :: Handler [Bid]
 getBids = return bids
 
-postBid :: Bid -> Handler (Html ())
-postBid _ =
-  return $
-    doctypehtml_ $ do
-      head_ (title_ "Hask Ask")
-      body_ (p_ "Yay! You placed a bid")
+postBid :: Bid -> Handler NoContent
+postBid _ = return NoContent
+
+serveStatic :: Tagged Handler Application
+serveStatic = serveDirectoryFileServer "static"
 
 server :: Server API
-server = getHome :<|> getBids :<|> postBid
+server = getHome :<|> getBids :<|> postBid :<|> serveStatic
 
 api :: Proxy API
 api = Proxy
