@@ -3,20 +3,21 @@ module Auction
     ItemState (..),
     BidQueue,
     Item (..),
-    ItemId,
+    ItemPure,
     ItemTVar,
-    itemTVarToId,
+    Items,
+    itemTVarToPure,
     handleBids,
   )
 where
 
--- import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
 import Data.Aeson
 import Data.Functor.Identity
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Text (Text)
--- import qualified Data.Text as Text
 import Data.Time.Clock
 import GHC.Generics
 import Utilities
@@ -35,56 +36,61 @@ instance FromJSON Bid
 instance FromForm Bid
 
 data ItemState = Open | Closed
-  deriving (Generic, Eq)
+  deriving (Generic, Eq, Show)
 
 instance ToJSON ItemState
 
 data Item f g = Item
-  { endTime :: UTCTime,
+  { description :: Text,
+    endTime :: UTCTime,
     highestBid :: f Bid,
     state :: g ItemState
   }
 
-type ItemId = Item Maybe Identity
+type ItemPure = Item Maybe Identity
 
-type ItemTVar = Item TMVar TVar
-
-instance ToJSON ItemId where
+instance ToJSON ItemPure where
   toJSON item =
     object
-      [ "endTime" .= endTime item,
+      [ "description" .= description item,
+        "endTime" .= endTime item,
         "highestBid" .= highestBid item,
         "state" .= runIdentity (state item)
       ]
 
-itemTVarToId :: ItemTVar -> IO ItemId
-itemTVarToId item = do
+type ItemTVar = Item TMVar TVar
+
+type Items = TVar (Map Integer ItemTVar)
+
+type BidQueue = TChan (ItemTVar, Bid)
+
+itemTVarToPure :: ItemTVar -> IO ItemPure
+itemTVarToPure item = do
   bid <- tryReadTMVarIO $ highestBid item
   st <- readTVarIO $ state item
   return $
     Item
-      { endTime = endTime item,
+      { description = description item,
+        endTime = endTime item,
         highestBid = bid,
         state = Identity st
       }
 
-type BidQueue = TChan Bid
-
-updateCurrentBid :: ItemTVar -> BidQueue -> STM ()
-updateCurrentBid item queueVar = do
+placeBidOnItem :: ItemTVar -> Bid -> STM ()
+placeBidOnItem item bid = do
   itemState <- readTVar $ state item
   when (itemState == Open) $ do
     maybeBid <- tryReadTMVar $ highestBid item
-    bid <- readTChan queueVar
     let newHighestBid = maybe bid (maxOn amount bid) maybeBid
     writeTMVar (highestBid item) newHighestBid
 
-handleBids :: ItemTVar -> BidQueue -> IO ()
-handleBids item queueVar = do
+handleBids :: BidQueue -> IO ()
+handleBids queueVar = do
+  (item, bid) <- readTChanIO queueVar
   itemState <- readTVarIO $ state item
   when (itemState == Open) $ do
-    atomically $ updateCurrentBid item queueVar
-    handleBids item queueVar
+    atomically $ placeBidOnItem item bid
+    handleBids queueVar
 
 -- getBids :: ItemTVar -> BidQueue -> IO ()
 -- getBids item queueVar = do

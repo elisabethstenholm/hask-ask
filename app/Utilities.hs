@@ -8,6 +8,9 @@ writeTVarIO = (atomically .) . writeTVar
 writeTChanIO :: TChan a -> a -> IO ()
 writeTChanIO = (atomically .) . writeTChan
 
+readTChanIO :: TChan a -> IO a
+readTChanIO = atomically . readTChan
+
 tryReadTMVarIO :: TMVar a -> IO (Maybe a)
 tryReadTMVarIO = atomically . tryReadTMVar
 

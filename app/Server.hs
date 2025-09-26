@@ -1,7 +1,9 @@
 module Server (runApp) where
 
 import Auction
+import Control.Concurrent.STM
 import Control.Monad.IO.Class
+import qualified Data.Map as Map
 import Lucid
 import Network.Wai.Handler.Warp
 import Servant
@@ -11,32 +13,48 @@ import View
 
 type API =
   Get '[HTML] (Html ())
-    :<|> "item" :> Get '[JSON] ItemId
-    :<|> "placeBid" :> ReqBody '[JSON] Bid :> PostNoContent
+    :<|> "item" :> Capture "id" Integer :> Get '[HTML] (Html ())
+    :<|> "item" :> Capture "id" Integer :> "placeBid" :> ReqBody '[JSON] Bid :> PostNoContent
     :<|> "static" :> Raw
 
-getHome :: Handler (Html ())
-getHome = return $ withHead bidForm
+getHome :: Items -> Handler (Html ())
+getHome items = do
+  itms <- liftIO $ readTVarIO items
+  let (itemIds, itemTVars) = unzip $ Map.toList itms
+  itemsPure <- liftIO $ mapM itemTVarToPure itemTVars
+  return $ withHead $ itemTableWithLink $ zip itemIds itemsPure
 
-getItem :: ItemTVar -> Handler ItemId
-getItem = liftIO . itemTVarToId
+getItem :: Items -> Integer -> Handler (Html ())
+getItem items itemId = do
+  itms <- liftIO $ readTVarIO items
+  case Map.lookup itemId itms of
+    Nothing -> throwError err404
+    Just item -> do
+      itemPure <- liftIO $ itemTVarToPure item
+      return $ withHead $ do
+        itemTableWithoutLink [itemPure]
+        bidForm
 
-postBid :: BidQueue -> Bid -> Handler NoContent
-postBid queue bid = do
-  liftIO $ writeTChanIO queue bid
-  return NoContent
+postBid :: Items -> BidQueue -> Integer -> Bid -> Handler NoContent
+postBid items queue itemId bid = do
+  itms <- liftIO $ readTVarIO items
+  case Map.lookup itemId itms of
+    Nothing -> throwError err404
+    Just item -> do
+      liftIO $ writeTChanIO queue (item, bid)
+      return NoContent
 
 serveStatic :: Tagged Handler Application
 serveStatic = serveDirectoryFileServer "static"
 
-server :: ItemTVar -> BidQueue -> Server API
-server item queue = getHome :<|> getItem item :<|> postBid queue :<|> serveStatic
+server :: Items -> BidQueue -> Server API
+server items queue = getHome items :<|> getItem items :<|> postBid items queue :<|> serveStatic
 
 api :: Proxy API
 api = Proxy
 
-app :: ItemTVar -> BidQueue -> Application
+app :: Items -> BidQueue -> Application
 app = (serve api .) . server
 
-runApp :: ItemTVar -> BidQueue -> IO ()
+runApp :: Items -> BidQueue -> IO ()
 runApp = (run 8080 .) . app

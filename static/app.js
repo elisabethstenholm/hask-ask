@@ -1,15 +1,18 @@
-const form = document.getElementById("bid-form");
+const bidForm = document.getElementById("bid-form");
 const msgEl = document.getElementById("msg");
+const currentUrl = new URL(window.location.href);
 
-form.addEventListener("submit", async ev => {
+bidForm.addEventListener("submit", async ev => {
     ev.preventDefault();
     msgEl.textContent = "";
 
-    const obj = Object.fromEntries(new FormData(form).entries());
+    const obj = Object.fromEntries(new FormData(bidForm).entries());
     obj.amount = Number.parseInt(obj.amount);
 
+    const bidUrl = currentUrl.pathname.replace(/\/?$/, '/placeBid');
+
     try {
-        const result = await fetch("/placeBid", {
+        const result = await fetch(bidUrl, {
             method: "POST",
             headers: {
                 "Accept": "*/*",
@@ -20,7 +23,7 @@ form.addEventListener("submit", async ev => {
 
         if (result.status === 204) {
             msgEl.textContent = "Success: bid registered.";
-            form.reset();
+            bidForm.reset();
         } else {
             msgEl.textContent = "Error: something went wrong.";
         }

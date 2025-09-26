@@ -1,10 +1,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module View (withHead, bidForm) where
+module View (withHead, bidForm, itemTableWithLink, itemTableWithoutLink) where
 
 import Auction
+import Data.Functor.Identity
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Lucid
+import Data.Time 
 
 withHead :: Html () -> Html ()
 withHead body =
@@ -13,6 +16,45 @@ withHead body =
     body_ $ do
       body
       script_ [src_ "/static/app.js", defer_ "defer"] ("" :: Text)
+
+itemTableWithLink :: [(Integer, ItemPure)] -> Html ()
+itemTableWithLink items =
+  table_ $ do
+    thead_ $
+      tr_ $ do
+        th_ "Description"
+        th_ "Ends at"
+        th_ "Highest Bid"
+        th_ "Status"
+        th_ mempty
+    tbody_ $
+      mapM_ (\(itemId, item) -> addLinkToRow itemId $ itemRow item) items
+
+itemTableWithoutLink :: [ItemPure] -> Html ()
+itemTableWithoutLink items =
+  table_ $ do
+    thead_ $
+      tr_ $ do
+        th_ "Description"
+        th_ "Ends at"
+        th_ "Highest Bid"
+        th_ "Status"
+    tbody_ $
+      mapM_ itemRow items
+
+itemRow :: ItemPure -> Html ()
+itemRow item = do
+    td_ (toHtml $ description item)
+    td_ (toHtml $ formatTime defaultTimeLocale "%D %R" $ endTime item)
+    td_ $ case highestBid item of
+      Nothing -> "—"
+      Just bid -> toHtml (name bid <> " – " <> Text.pack (show (amount bid)))
+    td_ (toHtml $ show $ runIdentity $ state item)
+
+addLinkToRow :: Integer -> Html () -> Html ()
+addLinkToRow itemId row = do
+  row
+  td_ $ a_ [href_ ("/item/" <> Text.pack (show itemId))] "View & Bid"
 
 bidForm :: Html ()
 bidForm =

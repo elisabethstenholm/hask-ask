@@ -5,15 +5,19 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Data.Time.Clock
 import Server
+import qualified Data.Map as Map
 
 main :: IO ()
 main = do
+  let desc = "Disco teapot"
   currentTime <- getCurrentTime
   let end = addUTCTime (secondsToNominalDiffTime 60) currentTime
   bid <- newEmptyTMVarIO
   st <- newTVarIO Open
-  let itemTVar = Item {endTime = end, highestBid = bid, state = st}
+  let itemTVar = Item {description = desc, endTime = end, highestBid = bid, state = st}
   bidQueue <- newTChanIO
 
-  _ <- forkIO $ handleBids itemTVar bidQueue
-  runApp itemTVar bidQueue
+  items <- newTVarIO $ Map.singleton 1 itemTVar
+
+  _ <- forkIO $ handleBids bidQueue
+  runApp items bidQueue
