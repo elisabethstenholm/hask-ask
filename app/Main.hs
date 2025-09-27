@@ -18,6 +18,7 @@ main = do
   bidQueue <- newTChanIO
 
   items <- newTVarIO $ Map.singleton 1 itemTVar
+  highestItemId <- newTVarIO 1
 
   _ <- forkIO $ handleBids bidQueue
-  runApp items bidQueue
+  runApp highestItemId items bidQueue

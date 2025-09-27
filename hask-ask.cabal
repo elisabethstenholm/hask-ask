@@ -80,7 +80,9 @@ executable hask-ask
                       text >= 2.1.3,
                       aeson >= 2.2.3.0,
                       http-api-data >= 0.6.2,
-                      containers >= 0.6.8
+                      containers >= 0.6.8,
+                      mtl >= 2.3.1,
+                      transformers >= 0.6.1
 
     -- Directories containing source files.
     hs-source-dirs:   app

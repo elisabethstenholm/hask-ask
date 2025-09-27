@@ -1,12 +1,12 @@
-const bidForm = document.getElementById("bid-form");
-const msgEl = document.getElementById("msg");
+const form = document.getElementById("bid-form");
+const msgEl = document.getElementById("bid-msg");
 const currentUrl = new URL(window.location.href);
 
-bidForm.addEventListener("submit", async ev => {
+form.addEventListener("submit", async ev => {
     ev.preventDefault();
     msgEl.textContent = "";
 
-    const obj = Object.fromEntries(new FormData(bidForm).entries());
+    const obj = Object.fromEntries(new FormData(form).entries());
     obj.amount = Number.parseInt(obj.amount);
 
     const bidUrl = currentUrl.pathname.replace(/\/?$/, '/placeBid');
@@ -23,12 +23,12 @@ bidForm.addEventListener("submit", async ev => {
 
         if (result.status === 204) {
             msgEl.textContent = "Success: bid registered.";
-            bidForm.reset();
+            form.reset();
         } else {
             msgEl.textContent = "Error: something went wrong.";
         }
     } catch (e) {
         console.error("submit error", e);
-        msgEl.textContent = "Error: Network error.";
+        msgEl.textContent = "Error: network error.";
     }
 });

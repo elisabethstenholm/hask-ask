@@ -6,13 +6,18 @@ module Auction
     ItemPure,
     ItemTVar,
     Items,
+    HighestItemId,
     itemTVarToPure,
     handleBids,
+    tryAddToQueue,
+    addItem
   )
 where
 
 import Control.Concurrent.STM
 import Control.Monad
+import Control.Monad.Except
+import Control.Monad.Trans.Class
 import Data.Aeson
 import Data.Functor.Identity
 import Data.Map (Map)
@@ -20,6 +25,7 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import Data.Time.Clock
 import GHC.Generics
+import Servant.Server
 import Utilities
 import Web.FormUrlEncoded
 
@@ -62,12 +68,16 @@ type ItemTVar = Item TMVar TVar
 
 type Items = TVar (Map Integer ItemTVar)
 
+type HighestItemId = TVar Integer
+
 type BidQueue = TChan (ItemTVar, Bid)
 
-itemTVarToPure :: ItemTVar -> IO ItemPure
+type STMWithServerError a = ExceptT ServerError STM a
+
+itemTVarToPure :: ItemTVar -> STM ItemPure
 itemTVarToPure item = do
-  bid <- tryReadTMVarIO $ highestBid item
-  st <- readTVarIO $ state item
+  bid <- tryReadTMVar $ highestBid item
+  st <- readTVar $ state item
   return $
     Item
       { description = description item,
@@ -84,52 +94,37 @@ placeBidOnItem item bid = do
     let newHighestBid = maybe bid (maxOn amount bid) maybeBid
     writeTMVar (highestBid item) newHighestBid
 
-handleBids :: BidQueue -> IO ()
-handleBids queueVar = do
-  (item, bid) <- readTChanIO queueVar
-  itemState <- readTVarIO $ state item
+handleBid :: BidQueue -> STM ()
+handleBid queueVar = do
+  (item, bid) <- readTChan queueVar
+  itemState <- readTVar $ state item
   when (itemState == Open) $ do
-    atomically $ placeBidOnItem item bid
-    handleBids queueVar
+    placeBidOnItem item bid
 
--- getBids :: ItemTVar -> BidQueue -> IO ()
--- getBids item queueVar = do
---   itemState <- readTVarIO $ state item
---   case itemState of
---     Closed -> return ()
---     Open -> do
---       topBid <- readTVarIO (highestBid item)
---       putStrLn $ "Current bid: " ++ show (amount topBid) ++ " by " ++ Text.unpack (name topBid)
---       bidName <- getLine
---       bidAmount <- getLine
---       writeTChanIO queueVar $ Bid (Text.pack bidName) (read bidAmount)
---       threadDelay 10000
---       getBids item queueVar
+handleBids :: BidQueue -> IO ()
+handleBids = forever . atomically . handleBid
 
--- timer :: ItemTVar -> IO ()
--- timer item = do
---   currentTime <- getCurrentTime
---   if currentTime >= endTime item
---     then
---       writeTVarIO (state item) Closed
---     else do
---       threadDelay 100000
---       timer item
+tryAddToQueue :: Items -> BidQueue -> Integer -> Bid -> STMWithServerError ()
+tryAddToQueue items queue itemId bid = do
+  itms <- lift $ readTVar items
+  case Map.lookup itemId itms of
+    Nothing -> throwError err404
+    Just item -> lift $ writeTChan queue (item, bid)
 
--- tui :: IO ()
--- tui = do
---   putStrLn "Today's auction item is a coffee cup made entirely of cat purrs!\n\nYou have 10 seconds!"
-
---   currentTime <- getCurrentTime
---   let itemEndTime = addUTCTime (secondsToNominalDiffTime 10) currentTime
---   currentBidVar <- newTVarIO $ Bid "" 0
---   currentState <- newTVarIO Open
---   queueVar <- newTChanIO
-
---   let item = Item {endTime = itemEndTime, highestBid = currentBidVar, state = currentState}
-
---   void $ forkIO $ forever $ timer item
---   void $ forkIO $ do
---     winningBid <- updateItem item queueVar
---     putStrLn $ "Winning bid: " ++ Text.unpack (name winningBid)
---   getBids item queueVar
+addItem :: UTCTime -> HighestItemId -> Items -> Text -> STM ()
+addItem endsAt highestItemId items desc = do
+  highestId <- readTVar highestItemId
+  itms <- readTVar items
+  noBid <- newEmptyTMVar
+  open <- newTVar Open
+  let newHighestId = highestId + 1
+  let item =
+        Item
+          { description = desc,
+            endTime = endsAt,
+            highestBid = noBid,
+            state = open
+          }
+  let updatedMap = Map.insert newHighestId item itms
+  writeTVar items updatedMap
+  writeTVar highestItemId newHighestId
