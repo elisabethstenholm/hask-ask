@@ -6,6 +6,8 @@ module View
     itemTableWithLink,
     itemTableWithoutLink,
     itemForm,
+    itemRow,
+    itemLink,
   )
 where
 
@@ -14,6 +16,8 @@ import Data.Functor.Identity
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
+import Data.UUID (UUID)
+import qualified Data.UUID as UUID
 import Lucid
 
 withHead :: Text -> Html () -> Html ()
@@ -22,11 +26,11 @@ withHead jsSource body =
     head_ (title_ "Hask Ask")
     body_ $ do
       body
-      script_ [src_ jsSource, defer_ "defer"] ("" :: Text)
+      script_ [src_ jsSource, type_ "module"] ("" :: Text)
 
-itemTableWithLink :: [(Integer, ItemPure)] -> Html ()
-itemTableWithLink items =
-  table_ $ do
+itemTableWithLink :: UUID -> [(Integer, UUID, ItemPure)] -> Html ()
+itemTableWithLink itemListSubscrId items =
+  table_ [id_ $ UUID.toText itemListSubscrId] $ do
     thead_ $
       tr_ $ do
         th_ "Description"
@@ -35,9 +39,9 @@ itemTableWithLink items =
         th_ "Status"
         th_ mempty
     tbody_ $
-      mapM_ (\(itemId, item) -> addLinkToRow itemId $ itemRow item) items
+      mapM_ (\(itemId, subscriptionId, item) -> itemRow (Just $ itemLink itemId) item subscriptionId) items
 
-itemTableWithoutLink :: [ItemPure] -> Html ()
+itemTableWithoutLink :: [(ItemPure, UUID)] -> Html ()
 itemTableWithoutLink items =
   table_ $ do
     thead_ $
@@ -47,20 +51,24 @@ itemTableWithoutLink items =
         th_ "Highest Bid"
         th_ "Status"
     tbody_ $
-      mapM_ itemRow items
+      mapM_ (uncurry $ itemRow Nothing) items
 
-itemRow :: ItemPure -> Html ()
-itemRow item = do
-  td_ (toHtml $ description item)
-  td_ (toHtml $ formatTime defaultTimeLocale "%D %R" $ endTime item)
-  td_ $ case highestBid item of
-    Nothing -> "—"
-    Just bid -> toHtml (name bid <> " – " <> Text.pack (show (amount bid)))
-  td_ (toHtml $ show $ runIdentity $ state item)
+itemRow :: Maybe (Html ()) -> ItemPure -> UUID -> Html ()
+itemRow maybeLink item subscriptionId = do
+  let row = do
+        td_ [name_ "description"] (toHtml $ description item)
+        td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %R" $ endTime item)
+        td_ [name_ "highestBid"] $
+          case highestBid item of
+            Nothing -> "—"
+            Just bid -> toHtml (name bid <> " – " <> Text.pack (show (amount bid)))
+        td_ [name_ "state"] (toHtml $ show $ runIdentity $ state item)
+  case maybeLink of
+    Nothing -> tr_ [id_ $ UUID.toText subscriptionId] row
+    Just link -> tr_ [id_ $ UUID.toText subscriptionId] $ row <> link
 
-addLinkToRow :: Integer -> Html () -> Html ()
-addLinkToRow itemId row = do
-  row
+itemLink :: Integer -> Html ()
+itemLink itemId =
   td_ $ a_ [href_ ("/item/" <> Text.pack (show itemId))] "View & Bid"
 
 itemForm :: Html ()

@@ -20,5 +20,9 @@ main = do
   items <- newTVarIO $ Map.singleton 1 itemTVar
   highestItemId <- newTVarIO 1
 
+  itemSubscriptions <- newTVarIO Map.empty
+  itemListSubscriptions <- newTVarIO Map.empty
+
   _ <- forkIO $ handleBids bidQueue
-  runApp highestItemId items bidQueue
+  runApp itemListSubscriptions itemSubscriptions highestItemId items bidQueue
+
