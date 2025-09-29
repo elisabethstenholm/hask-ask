@@ -16,11 +16,14 @@ import Servant
 import Servant.HTML.Lucid
 import View
 
-newtype ItemReq = ItemReq {descriptionReq :: Text}
+data ItemReq = ItemReq
+  { descriptionReq :: Text,
+    askingPriceReq :: Integer
+  }
 
 instance FromJSON ItemReq where
   parseJSON = withObject "ItemReq" $ \obj ->
-    ItemReq <$> obj .: "description"
+    ItemReq <$> obj .: "description" <*> obj .: "askingPrice"
 
 newtype SubscriptionId = SubscriptionId {subscriptionId :: UUID}
 
@@ -74,7 +77,10 @@ pollItem subscriptions subscrId = do
 
 pollItems :: ItemListSubscriptions -> ItemSubscriptions -> Items -> SubscriptionId -> Handler (Html ())
 pollItems itemListSubscr itemSubscr items subscrId = do
-  (itemId, item) <- Handler $ mapExceptT atomically $ pollItemListSubscription itemListSubscr items (subscriptionId subscrId)
+  (itemId, item) <-
+    Handler $
+      mapExceptT atomically $
+        pollItemListSubscription itemListSubscr items (subscriptionId subscrId)
   (itemSubscrId, itemPure) <- liftIO $ subscribeToItem itemSubscr item
   return $ itemRow (Just $ itemLink itemId) itemPure itemSubscrId
 
@@ -82,7 +88,9 @@ postItem :: HighestItemId -> Items -> ItemReq -> Handler NoContent
 postItem highestItemId items itemReq = do
   currentTime <- liftIO getCurrentTime
   let endsAt = addUTCTime (secondsToNominalDiffTime 300) currentTime
-  liftIO $ atomically $ addItem endsAt highestItemId items (descriptionReq itemReq)
+  let desc = descriptionReq itemReq
+  let askPr = askingPriceReq itemReq
+  liftIO $ atomically $ addItem endsAt highestItemId items desc askPr
   return NoContent
 
 serveStatic :: Tagged Handler Application

@@ -57,6 +57,7 @@ instance ToJSON ItemState
 
 data Item f g = Item
   { description :: Text,
+    askingPrice :: Integer,
     endTime :: UTCTime,
     highestBid :: f Bid,
     state :: g ItemState
@@ -70,6 +71,7 @@ instance ToJSON ItemPure where
   toJSON item =
     object
       [ "description" .= description item,
+        "askingPrice" .= askingPrice item,
         "endTime" .= formatTime defaultTimeLocale "%D %R" (endTime item),
         "highestBid" .= highestBid item,
         "state" .= runIdentity (state item)
@@ -96,6 +98,7 @@ itemTVarToPure item = do
   return $
     Item
       { description = description item,
+        askingPrice = askingPrice item,
         endTime = endTime item,
         highestBid = bid,
         state = Identity st
@@ -124,10 +127,14 @@ tryAddToQueue items queue itemId bid = do
   itms <- lift $ readTVar items
   case Map.lookup itemId itms of
     Nothing -> throwError err404
-    Just item -> lift $ writeTChan queue (item, bid)
+    Just item -> do
+      when (amount bid < askingPrice item) $
+        throwError $
+          err409 {errBody = "Bid below asking price"}
+      lift $ writeTChan queue (item, bid)
 
-addItem :: UTCTime -> HighestItemId -> Items -> Text -> STM ()
-addItem endsAt highestItemId items desc = do
+addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ()
+addItem endsAt highestItemId items desc askPr = do
   highestId <- readTVar highestItemId
   itms <- readTVar items
   noBid <- newEmptyTMVar
@@ -136,6 +143,7 @@ addItem endsAt highestItemId items desc = do
   let item =
         Item
           { description = desc,
+            askingPrice = askPr,
             endTime = endsAt,
             highestBid = noBid,
             state = open

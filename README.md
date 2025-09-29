@@ -4,7 +4,7 @@ Hask ask is a small auction plattform written in Haskell.
 
 The program is built with Cabal and packaged with Nix. You can either install
 all the necessary dependencies to build the Cabal package, or you can just
-build it with Nix. Building/developing the package with Nix install all
+build it with Nix. Building/developing the package with Nix installs all
 necessary dependencies in a location that will not pollute your global
 installations.
 

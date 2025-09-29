@@ -63,6 +63,7 @@ async function pollItemList(table) {
 
       addRow(html);
     } catch (err) {
+      console.error("Error: ", err);
       break;
     }
   }

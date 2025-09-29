@@ -38,6 +38,7 @@ async function pollRow(tr) {
 
       patchRowFromPayload(tr, data);
     } catch (err) {
+      console.error("Error: ", err);
       break;
     }
   }

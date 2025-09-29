@@ -26,11 +26,14 @@ form.addEventListener("submit", async ev => {
     if (result.status === 204) {
       msgEl.textContent = "Success: bid registered.";
       form.reset();
+    } else if (result.status == 409) {
+      const errorText = await result.text();
+      msgEl.textContent = "Bid rejected: " + errorText;
     } else {
       msgEl.textContent = "Error: something went wrong.";
     }
-  } catch (e) {
-    console.error("submit error", e);
+  } catch (err) {
+    console.error("Error: ", err);
     msgEl.textContent = "Error: network error.";
   }
 });

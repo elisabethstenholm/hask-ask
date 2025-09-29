@@ -34,6 +34,7 @@ itemTableWithLink itemListSubscrId items =
     thead_ $
       tr_ $ do
         th_ "Description"
+        th_ "Asking price"
         th_ "Ends at"
         th_ "Highest Bid"
         th_ "Status"
@@ -47,6 +48,7 @@ itemTableWithoutLink items =
     thead_ $
       tr_ $ do
         th_ "Description"
+        th_ "Asking price"
         th_ "Ends at"
         th_ "Highest Bid"
         th_ "Status"
@@ -57,6 +59,7 @@ itemRow :: Maybe (Html ()) -> ItemPure -> UUID -> Html ()
 itemRow maybeLink item subscriptionId = do
   let row = do
         td_ [name_ "description"] (toHtml $ description item)
+        td_ [name_ "askingPrice"] (toHtml $ show $ askingPrice item)
         td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %R" $ endTime item)
         td_ [name_ "highestBid"] $
           case highestBid item of
@@ -76,6 +79,8 @@ itemForm =
   form_ [id_ "item-form"] $ do
     label_ [for_ "description"] "Description"
     input_ [type_ "text", id_ "description", name_ "description", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
+    label_ [for_ "askingPrice"] "Asking price"
+    input_ [type_ "number", id_ "askingPrice", name_ "askingPrice", min_ "1", step_ "1"]
     div_ [id_ "item-msg"] mempty
     input_ [type_ "submit", value_ "Sell item"]
 
