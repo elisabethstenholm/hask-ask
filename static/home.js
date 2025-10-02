@@ -9,6 +9,7 @@ form.addEventListener("submit", async ev => {
 
   const obj = Object.fromEntries(new FormData(form).entries());
   obj.askingPrice = Number.parseInt(obj.askingPrice);
+  obj.duration = Number.parseInt(obj.duration);
 
   try {
     const result = await fetch("/postItem", {

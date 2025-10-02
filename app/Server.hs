@@ -20,12 +20,16 @@ import View
 
 data ItemReq = ItemReq
   { descriptionReq :: Text,
-    askingPriceReq :: Integer
+    askingPriceReq :: Integer,
+    duration :: Integer
   }
 
 instance FromJSON ItemReq where
   parseJSON = withObject "ItemReq" $ \obj ->
-    ItemReq <$> obj .: "description" <*> obj .: "askingPrice"
+    ItemReq
+      <$> obj .: "description"
+      <*> obj .: "askingPrice"
+      <*> obj .: "duration"
 
 newtype SubscriptionId = SubscriptionId {subscriptionId :: UUID}
 
@@ -94,7 +98,7 @@ pollItems itemListSubscr itemSubscr items subscrId = do
 postItem :: HighestItemId -> Items -> ItemReq -> Handler NoContent
 postItem highestItemId items itemReq = do
   currentTime <- liftIO getCurrentTime
-  let endsAt = addUTCTime (secondsToNominalDiffTime 300) currentTime
+  let endsAt = addUTCTime (secondsToNominalDiffTime $ fromInteger $ duration itemReq * 60) currentTime
   let desc = descriptionReq itemReq
   let askPr = askingPriceReq itemReq
   itemTVar <- liftIO $ atomically $ addItem endsAt highestItemId items desc askPr
