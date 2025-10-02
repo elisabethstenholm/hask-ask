@@ -13,6 +13,7 @@ module Auction
     handleBids,
     tryAddToQueue,
     addItem,
+    closeWhenPastEndTime,
     subscribeToItem,
     pollItemSubscription,
     subscribeToItemList,
@@ -133,7 +134,7 @@ tryAddToQueue items queue itemId bid = do
           err409 {errBody = "Bid below asking price"}
       lift $ writeTChan queue (item, bid)
 
-addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ()
+addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ItemTVar
 addItem endsAt highestItemId items desc askPr = do
   highestId <- readTVar highestItemId
   itms <- readTVar items
@@ -151,6 +152,17 @@ addItem endsAt highestItemId items desc askPr = do
   let updatedMap = Map.insert newHighestId item itms
   writeTVar items updatedMap
   writeTVar highestItemId newHighestId
+  return item
+
+closeWhenPastEndTime :: ItemTVar -> IO ()
+closeWhenPastEndTime item = do
+  currentTime <- getCurrentTime
+  if currentTime >= endTime item
+    then
+      writeTVarIO (state item) Closed
+    else do
+      threadDelay 100000
+      closeWhenPastEndTime item
 
 updateItemSubscription :: ItemTVar -> TMVar ItemPure -> ItemPure -> IO ()
 updateItemSubscription itemTVar itemBox lastItemVersion = do

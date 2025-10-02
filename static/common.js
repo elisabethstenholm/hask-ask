@@ -5,6 +5,7 @@ function patchRowFromPayload(tr, data) {
   const endsEl = byName('endTime');
   const highEl = byName('highestBid');
   const stateEl = byName('state');
+  const linkEl = tr.querySelector(`td[name="link"] a`);
 
   if (descEl) descEl.textContent = data.description ?? '';
   if (endsEl) endsEl.textContent = data.endTime ?? '';
@@ -14,6 +15,20 @@ function patchRowFromPayload(tr, data) {
       bid ? `${bid.name} – ${bid.amount}` : '—';
   }
   if (stateEl) stateEl.textContent = data.state ?? '';
+  if (linkEl && data.state === "Closed") {
+    linkEl.textContent = "View";
+  };
+}
+
+function removeBidFormIfPresent() {
+  const form = document.getElementById("bid-form");
+  if (!form) return;
+
+  const msg = document.createElement("div");
+  msg.textContent = "Auction is closed";
+  msg.id = "closed-msg";
+
+  form.replaceWith(msg);
 }
 
 async function pollRow(tr) {
@@ -37,6 +52,10 @@ async function pollRow(tr) {
       if (!document.body.contains(tr)) return;
 
       patchRowFromPayload(tr, data);
+      if (data.state === 'Closed') {
+        removeBidFormIfPresent()
+        break;
+      }
     } catch (err) {
       console.error("Error: ", err);
       break;

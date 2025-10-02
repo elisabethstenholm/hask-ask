@@ -1,10 +1,12 @@
 module Server (runApp) where
 
 import Auction
+import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Data.Aeson
+import Data.Functor.Identity
 import qualified Data.Map as Map
 import Data.Text (Text)
 import Data.Time.Clock
@@ -59,10 +61,15 @@ getItem subscriptions items itemId = do
     Nothing -> throwError err404
     Just item -> do
       (uuid, itemPure) <- liftIO $ subscribeToItem subscriptions item
+      let bidFormIfOpen =
+            case runIdentity $ state itemPure of
+              Open -> bidForm
+              Closed -> div_ [id_ "closed-msg"] "Auction is closed"
+
       return $ withHead "/static/item.js" $ do
         a_ [href_ "/"] "Home"
         itemTableWithoutLink [(itemPure, uuid)]
-        bidForm
+        bidFormIfOpen
 
 postBid :: Items -> BidQueue -> Integer -> Bid -> Handler NoContent
 postBid items queue itemId bid = do
@@ -82,7 +89,7 @@ pollItems itemListSubscr itemSubscr items subscrId = do
       mapExceptT atomically $
         pollItemListSubscription itemListSubscr items (subscriptionId subscrId)
   (itemSubscrId, itemPure) <- liftIO $ subscribeToItem itemSubscr item
-  return $ itemRow (Just $ itemLink itemId) itemPure itemSubscrId
+  return $ itemRow (Just $ itemLink itemId itemPure) itemPure itemSubscrId
 
 postItem :: HighestItemId -> Items -> ItemReq -> Handler NoContent
 postItem highestItemId items itemReq = do
@@ -90,7 +97,8 @@ postItem highestItemId items itemReq = do
   let endsAt = addUTCTime (secondsToNominalDiffTime 300) currentTime
   let desc = descriptionReq itemReq
   let askPr = askingPriceReq itemReq
-  liftIO $ atomically $ addItem endsAt highestItemId items desc askPr
+  itemTVar <- liftIO $ atomically $ addItem endsAt highestItemId items desc askPr
+  _ <- liftIO $ forkIO $ closeWhenPastEndTime itemTVar
   return NoContent
 
 serveStatic :: Tagged Handler Application

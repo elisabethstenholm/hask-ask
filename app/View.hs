@@ -13,6 +13,7 @@ where
 
 import Auction
 import Data.Functor.Identity
+import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Time
@@ -40,7 +41,14 @@ itemTableWithLink itemListSubscrId items =
         th_ "Status"
         th_ mempty
     tbody_ $
-      mapM_ (\(itemId, subscriptionId, item) -> itemRow (Just $ itemLink itemId) item subscriptionId) items
+      mapM_
+        ( \(itemId, subscriptionId, item) ->
+            itemRow
+              (Just $ itemLink itemId item)
+              item
+              subscriptionId
+        )
+        items
 
 itemTableWithoutLink :: [(ItemPure, UUID)] -> Html ()
 itemTableWithoutLink items =
@@ -56,23 +64,25 @@ itemTableWithoutLink items =
       mapM_ (uncurry $ itemRow Nothing) items
 
 itemRow :: Maybe (Html ()) -> ItemPure -> UUID -> Html ()
-itemRow maybeLink item subscriptionId = do
-  let row = do
-        td_ [name_ "description"] (toHtml $ description item)
-        td_ [name_ "askingPrice"] (toHtml $ show $ askingPrice item)
-        td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %R" $ endTime item)
-        td_ [name_ "highestBid"] $
-          case highestBid item of
-            Nothing -> "—"
-            Just bid -> toHtml (name bid <> " – " <> Text.pack (show (amount bid)))
-        td_ [name_ "state"] (toHtml $ show $ runIdentity $ state item)
-  case maybeLink of
-    Nothing -> tr_ [id_ $ UUID.toText subscriptionId] row
-    Just link -> tr_ [id_ $ UUID.toText subscriptionId] $ row <> link
+itemRow maybeLink item subscriptionId =
+  tr_ [id_ $ UUID.toText subscriptionId] $ do
+    td_ [name_ "description"] (toHtml $ description item)
+    td_ [name_ "askingPrice"] (toHtml $ show $ askingPrice item)
+    td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %T" $ endTime item)
+    td_ [name_ "highestBid"] $
+      case highestBid item of
+        Nothing -> "—"
+        Just bid -> toHtml (name bid <> " – " <> Text.pack (show (amount bid)))
+    td_ [name_ "state"] (toHtml $ show $ runIdentity $ state item)
+    fromMaybe mempty maybeLink
 
-itemLink :: Integer -> Html ()
-itemLink itemId =
-  td_ $ a_ [href_ ("/item/" <> Text.pack (show itemId))] "View & Bid"
+itemLink :: Integer -> ItemPure -> Html ()
+itemLink itemId item =
+  let linkText =
+        case runIdentity $ state item of
+          Closed -> "View"
+          Open -> "View & Bid"
+   in td_ [name_ "link"] $ a_ [href_ ("/item/" <> Text.pack (show itemId))] linkText
 
 itemForm :: Html ()
 itemForm =

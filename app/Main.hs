@@ -12,7 +12,7 @@ main = do
   let desc = "Disco teapot"
   let askPr = 100
   currentTime <- getCurrentTime
-  let end = addUTCTime (secondsToNominalDiffTime 60) currentTime
+  let end = addUTCTime (secondsToNominalDiffTime 10) currentTime
   bid <- newEmptyTMVarIO
   st <- newTVarIO Open
   let itemTVar =
@@ -27,6 +27,7 @@ main = do
 
   items <- newTVarIO $ Map.singleton 1 itemTVar
   highestItemId <- newTVarIO 1
+  _ <- forkIO $ closeWhenPastEndTime itemTVar
 
   itemSubscriptions <- newTVarIO Map.empty
   itemListSubscriptions <- newTVarIO Map.empty
