@@ -91,7 +91,7 @@ itemForm =
     input_ [type_ "text", id_ "description", name_ "description", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
     label_ [for_ "askingPrice"] "Asking price"
     input_ [type_ "number", id_ "askingPrice", name_ "askingPrice", min_ "1", step_ "1"]
-    label_ [for_ "duration"] "Duration"
+    label_ [for_ "duration"] "Duration (minutes)"
     input_ [type_ "number", id_ "duration", name_ "duration", min_ "1", step_ "1"]
     div_ [id_ "item-msg"] mempty
     input_ [type_ "submit", value_ "Sell item"]
