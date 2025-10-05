@@ -31,7 +31,7 @@ function removeBidFormIfPresent() {
   form.replaceWith(msg);
 }
 
-async function pollRow(tr) {
+export async function pollRow(tr) {
   const subscriptionId = tr.id;
   if (!subscriptionId) return;
 

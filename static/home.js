@@ -1,4 +1,4 @@
-import { startItemPolling } from "./common.js";
+import { startItemPolling, pollRow } from "./common.js";
 
 const form = document.getElementById("item-form");
 const msgEl = document.getElementById("item-msg");
@@ -42,6 +42,7 @@ function addRow(html) {
   const tbody = document.querySelector('table tbody');
   if (tbody) {
     tbody.appendChild(newRow);
+    return newRow;
   }
 }
 
@@ -63,7 +64,8 @@ async function pollItemList(table) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const html = await res.text();
 
-      addRow(html);
+      const newRow = addRow(html);
+      pollRow(newRow);
     } catch (err) {
       console.error("Error: ", err);
       break;
