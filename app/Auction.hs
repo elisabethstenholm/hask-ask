@@ -126,13 +126,10 @@ handleBids = forever . atomically . handleBid
 tryAddToQueue :: Items -> BidQueue -> Integer -> Bid -> STMServErr ()
 tryAddToQueue items queue itemId bid = do
   itms <- lift $ readTVar items
-  case Map.lookup itemId itms of
-    Nothing -> throwError err404
-    Just item -> do
-      when (amount bid < askingPrice item) $
-        throwError $
-          err409 {errBody = "Bid below asking price"}
-      lift $ writeTChan queue (item, bid)
+  item <- lookupOrThrow itemId itms err404
+  when (amount bid < askingPrice item) $ do
+    throwError $ err409 {errBody = "Bid below asking price"}
+  lift $ writeTChan queue (item, bid)
 
 addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ItemTVar
 addItem endsAt highestItemId items desc askPr = do
@@ -185,9 +182,8 @@ subscribeToItem subscriptions itemTVar = do
 pollItemSubscription :: ItemSubscriptions -> UUID -> STMServErr ItemPure
 pollItemSubscription subscriptions subscriptionId = do
   subscr <- lift $ readTVar subscriptions
-  case Map.lookup subscriptionId subscr of
-    Nothing -> throwError err404
-    Just itemBox -> lift $ takeTMVar itemBox
+  itemBox <- lookupOrThrow subscriptionId subscr err404
+  lift $ takeTMVar itemBox
 
 updateItemListSubscription :: TChan Integer -> HighestItemId -> Integer -> IO ()
 updateItemListSubscription itemChan highestIdTVar lastHighestId = do
@@ -214,10 +210,7 @@ pollItemListSubscription :: ItemListSubscriptions -> Items -> UUID -> STMServErr
 pollItemListSubscription subscriptions items subscriptionId = do
   subscr <- lift $ readTVar subscriptions
   itms <- lift $ readTVar items
-  case Map.lookup subscriptionId subscr of
-    Nothing -> throwError err404
-    Just itemChan -> do
-      itemId <- lift $ readTChan itemChan
-      case Map.lookup itemId itms of
-        Nothing -> throwError err500
-        Just itemTVar -> return (itemId, itemTVar)
+  itemChan <- lookupOrThrow subscriptionId subscr err404
+  itemId <- lift $ readTChan itemChan
+  itemTVar <- lookupOrThrow itemId itms err500
+  return (itemId, itemTVar)
