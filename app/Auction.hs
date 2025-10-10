@@ -19,6 +19,7 @@ module Auction
   )
 where
 
+import Control.Applicative
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
@@ -72,7 +73,7 @@ instance ToJSON ItemPure where
     object
       [ "description" .= description item,
         "askingPrice" .= askingPrice item,
-        "endTime" .= formatTime defaultTimeLocale "%D %R" (endTime item),
+        "endTime" .= formatTime defaultTimeLocale "%D %T" (endTime item),
         "highestBid" .= highestBid item,
         "state" .= runIdentity (state item)
       ]
@@ -111,9 +112,8 @@ tryPlaceBid items itemId bid = do
     throwError $ err409 {errBody = "Item is closed"}
   when (amount bid < askingPrice item) $ do
     throwError $ err409 {errBody = "Bid below asking price"}
-  maybeBid <- lift $ tryReadTMVar $ highestBid item
-  let bidCompToCurrentBid = maybe GT ((compare `on` amount) bid) maybeBid
-  when (bidCompToCurrentBid /= GT) $ do
+  bidIsLower <- lift $ (((<=) `on` amount) bid <$> readTMVar (highestBid item)) <|> pure False
+  when bidIsLower $ do
     throwError $ err409 {errBody = "Bid too low"}
   lift $ writeTMVar (highestBid item) bid
 
