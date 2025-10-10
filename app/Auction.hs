@@ -25,6 +25,7 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Trans.Class
 import Data.Aeson
+import Data.Function
 import Data.Functor.Identity
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -110,14 +111,10 @@ tryPlaceBid items itemId bid = do
     throwError $ err409 {errBody = "Item is closed"}
   when (amount bid < askingPrice item) $ do
     throwError $ err409 {errBody = "Bid below asking price"}
-
   maybeBid <- lift $ tryReadTMVar $ highestBid item
-  case maybeBid of
-    Nothing -> pure ()
-    Just currentHighestBid ->
-      when (amount bid <= amount currentHighestBid) $ do
-        throwError $ err409 {errBody = "Bid too low"}
-
+  let bidCompToCurrentBid = maybe GT ((compare `on` amount) bid) maybeBid
+  when (bidCompToCurrentBid /= GT) $ do
+    throwError $ err409 {errBody = "Bid too low"}
   lift $ writeTMVar (highestBid item) bid
 
 addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ItemTVar
