@@ -1,7 +1,6 @@
 module Auction
   ( Bid (..),
     ItemState (..),
-    BidQueue,
     Item (..),
     ItemPure,
     ItemTVar,
@@ -10,8 +9,7 @@ module Auction
     ItemSubscriptions,
     ItemListSubscriptions,
     itemTVarToPure,
-    handleBids,
-    tryAddToQueue,
+    tryPlaceBid,
     addItem,
     closeWhenPastEndTime,
     subscribeToItem,
@@ -88,8 +86,6 @@ type ItemSubscriptions = TVar (Map UUID (TMVar ItemPure))
 
 type ItemListSubscriptions = TVar (Map UUID (TChan Integer))
 
-type BidQueue = TChan (ItemTVar, Bid)
-
 type STMServErr a = ExceptT ServerError STM a
 
 itemTVarToPure :: ItemTVar -> STM ItemPure
@@ -105,31 +101,24 @@ itemTVarToPure item = do
         state = Identity st
       }
 
-placeBidOnItem :: ItemTVar -> Bid -> STM ()
-placeBidOnItem item bid = do
-  itemState <- readTVar $ state item
-  when (itemState == Open) $ do
-    maybeBid <- tryReadTMVar $ highestBid item
-    let newHighestBid = maybe bid (maxOn amount bid) maybeBid
-    writeTMVar (highestBid item) newHighestBid
-
-handleBid :: BidQueue -> STM ()
-handleBid queueVar = do
-  (item, bid) <- readTChan queueVar
-  itemState <- readTVar $ state item
-  when (itemState == Open) $ do
-    placeBidOnItem item bid
-
-handleBids :: BidQueue -> IO ()
-handleBids = forever . atomically . handleBid
-
-tryAddToQueue :: Items -> BidQueue -> Integer -> Bid -> STMServErr ()
-tryAddToQueue items queue itemId bid = do
+tryPlaceBid :: Items -> Integer -> Bid -> STMServErr ()
+tryPlaceBid items itemId bid = do
   itms <- lift $ readTVar items
   item <- lookupOrThrow itemId itms err404
+  itemState <- lift $ readTVar $ state item
+  when (itemState == Closed) $ do
+    throwError $ err409 {errBody = "Item is closed"}
   when (amount bid < askingPrice item) $ do
     throwError $ err409 {errBody = "Bid below asking price"}
-  lift $ writeTChan queue (item, bid)
+
+  maybeBid <- lift $ tryReadTMVar $ highestBid item
+  case maybeBid of
+    Nothing -> pure ()
+    Just currentHighestBid ->
+      when (amount bid <= amount currentHighestBid) $ do
+        throwError $ err409 {errBody = "Bid too low"}
+
+  lift $ writeTMVar (highestBid item) bid
 
 addItem :: UTCTime -> HighestItemId -> Items -> Text -> Integer -> STM ItemTVar
 addItem endsAt highestItemId items desc askPr = do

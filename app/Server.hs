@@ -75,9 +75,9 @@ getItem subscriptions items itemId = do
         itemTableWithoutLink [(itemPure, uuid)]
         bidFormIfOpen
 
-postBid :: Items -> BidQueue -> Integer -> Bid -> Handler NoContent
-postBid items queue itemId bid = do
-  Handler $ mapExceptT atomically $ tryAddToQueue items queue itemId bid
+postBid :: Items -> Integer -> Bid -> Handler NoContent
+postBid items itemId bid = do
+  Handler $ mapExceptT atomically $ tryPlaceBid items itemId bid
   return NoContent
 
 pollItem :: ItemSubscriptions -> SubscriptionId -> Handler ItemPure
@@ -108,11 +108,11 @@ postItem highestItemId items itemReq = do
 serveStatic :: Tagged Handler Application
 serveStatic = serveDirectoryFileServer "static"
 
-server :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> BidQueue -> Server API
-server itemListSubscr itemSubscr highestItemId items queue =
+server :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> Server API
+server itemListSubscr itemSubscr highestItemId items =
   getHome itemListSubscr itemSubscr highestItemId items
     :<|> getItem itemSubscr items
-    :<|> postBid items queue
+    :<|> postBid items
     :<|> pollItem itemSubscr
     :<|> pollItems itemListSubscr itemSubscr items
     :<|> postItem highestItemId items
@@ -121,8 +121,8 @@ server itemListSubscr itemSubscr highestItemId items queue =
 api :: Proxy API
 api = Proxy
 
-app :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> BidQueue -> Application
-app = ((((serve api .) .) .) .) . server
+app :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> Application
+app = (((serve api .) .) .) . server
 
-runApp :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> BidQueue -> IO ()
-runApp = ((((run 8080 .) .) .) .) . app
+runApp :: ItemListSubscriptions -> ItemSubscriptions -> HighestItemId -> Items -> IO ()
+runApp = (((run 8080 .) .) .) . app

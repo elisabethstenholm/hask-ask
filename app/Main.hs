@@ -23,7 +23,6 @@ main = do
             highestBid = bid,
             state = st
           }
-  bidQueue <- newTChanIO
 
   items <- newTVarIO $ Map.singleton 1 itemTVar
   highestItemId <- newTVarIO 1
@@ -32,5 +31,4 @@ main = do
   itemSubscriptions <- newTVarIO Map.empty
   itemListSubscriptions <- newTVarIO Map.empty
 
-  _ <- forkIO $ handleBids bidQueue
-  runApp itemListSubscriptions itemSubscriptions highestItemId items bidQueue
+  runApp itemListSubscriptions itemSubscriptions highestItemId items
