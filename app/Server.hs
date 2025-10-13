@@ -54,7 +54,7 @@ getHome itemListSubscr itemSubscr hghId items = do
   (itemListSubscrId, itms) <- liftIO $ subscribeToItemList itemListSubscr hghId items
   let (itemIds, itemTVars) = unzip $ Map.toList itms
   itemsAndSubscrIds <- liftIO $ mapM (subscribeToItem itemSubscr) itemTVars
-  return $ withHead "/static/home.js" $ do
+  return $ withHead "page-home" "/static/home.js" $ do
     itemTableWithLink itemListSubscrId $ zipWith (\x (y, z) -> (x, y, z)) itemIds itemsAndSubscrIds
     itemForm
 
@@ -70,8 +70,8 @@ getItem subscriptions items itemId = do
               Open -> bidForm
               Closed -> div_ [id_ "closed-msg"] "Auction is closed"
 
-      return $ withHead "/static/item.js" $ do
-        a_ [href_ "/"] "Home"
+      return $ withHead "page-item" "/static/item.js" $ do
+        a_ [href_ "/", class_ "back-link"] "← Home"
         itemTableWithoutLink [(itemPure, uuid)]
         bidFormIfOpen
 

@@ -21,17 +21,19 @@ import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Lucid
 
-withHead :: Text -> Html () -> Html ()
-withHead jsSource body =
+withHead :: Text -> Text -> Html () -> Html ()
+withHead cssClass jsSource body =
   doctypehtml_ $ do
-    head_ (title_ "Hask Ask")
-    body_ $ do
+    head_ $ do
+      title_ "Hask Ask"
+      link_ [rel_ "stylesheet", href_ "/static/style.css"]
+    body_ [class_ cssClass] $ do
       body
       script_ [src_ jsSource, type_ "module"] ("" :: Text)
 
 itemTableWithLink :: UUID -> [(Integer, UUID, ItemPure)] -> Html ()
 itemTableWithLink itemListSubscrId items =
-  table_ [id_ $ UUID.toText itemListSubscrId] $ do
+  table_ [id_ $ UUID.toText itemListSubscrId, class_ "table"] $ do
     thead_ $
       tr_ $ do
         th_ "Description"
@@ -52,7 +54,7 @@ itemTableWithLink itemListSubscrId items =
 
 itemTableWithoutLink :: [(ItemPure, UUID)] -> Html ()
 itemTableWithoutLink items =
-  table_ $ do
+  table_ [class_ "table"] $ do
     thead_ $
       tr_ $ do
         th_ "Description"
@@ -86,7 +88,7 @@ itemLink itemId item =
 
 itemForm :: Html ()
 itemForm =
-  form_ [id_ "item-form"] $ do
+  form_ [id_ "item-form", class_ "form"] $ do
     label_ [for_ "description"] "Description"
     input_ [type_ "text", id_ "description", name_ "description", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
     label_ [for_ "askingPrice"] "Asking price"
@@ -98,7 +100,7 @@ itemForm =
 
 bidForm :: Html ()
 bidForm =
-  form_ [id_ "bid-form"] $ do
+  form_ [id_ "bid-form", class_ "form"] $ do
     label_ [for_ "name"] "Name"
     input_ [type_ "text", id_ "name", name_ "name", required_ "required", pattern_ "\\S.*", title_ "non-whitespace text"]
     label_ [for_ "amount"] "Amount"
