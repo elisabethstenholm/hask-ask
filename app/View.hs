@@ -68,7 +68,7 @@ itemRow maybeLink item subscriptionId =
   tr_ [id_ $ UUID.toText subscriptionId] $ do
     td_ [name_ "description"] (toHtml $ description item)
     td_ [name_ "askingPrice"] (toHtml $ show $ askingPrice item)
-    td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %T" $ endTime item)
+    td_ [name_ "endTime"] (toHtml $ formatTime defaultTimeLocale "%D %T %Z" $ endTime item)
     td_ [name_ "highestBid"] $
       case highestBid item of
         Nothing -> "—"

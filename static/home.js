@@ -1,4 +1,4 @@
-import { startItemPolling, pollRow } from "./common.js";
+import { startItemPolling, pollRow, startCountdowns, startCountdown } from "./common.js";
 
 const form = document.getElementById("item-form");
 const msgEl = document.getElementById("item-msg");
@@ -36,7 +36,7 @@ form.addEventListener("submit", async ev => {
 function addRow(html) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html.trim();
-  const newRow = tpl.content.firstElementChild;
+  const newRow = tpl.content.querySelector("tr");
   if (!newRow) return;
 
   const tbody = document.querySelector('table tbody');
@@ -65,6 +65,8 @@ async function pollItemList(table) {
       const html = await res.text();
 
       const newRow = addRow(html);
+      const newEndTimeCell = newRow.querySelector('td[name="endTime"]');
+      startCountdown(newEndTimeCell);
       pollRow(newRow);
     } catch (err) {
       console.error("Error: ", err);
@@ -80,3 +82,4 @@ function startItemListPolling() {
 
 startItemPolling();
 startItemListPolling();
+startCountdowns();

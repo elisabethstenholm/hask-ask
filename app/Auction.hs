@@ -73,7 +73,7 @@ instance ToJSON ItemPure where
     object
       [ "description" .= description item,
         "askingPrice" .= askingPrice item,
-        "endTime" .= formatTime defaultTimeLocale "%D %T" (endTime item),
+        "endTime" .= formatTime defaultTimeLocale "%D %T %Z" (endTime item),
         "highestBid" .= highestBid item,
         "state" .= runIdentity (state item)
       ]
